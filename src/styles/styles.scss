@@ -1,0 +1,130 @@
+@import "normalize.css";
+
+* {
+    font-family: sans-serif;
+}
+.container {
+    position: absolute;
+    z-index: 10000;
+    background: #ffffff;
+    border-radius: 10px;
+}
+.popup {
+    width: 350px;
+}
+
+.popup__hedr {
+    width: 100%;
+    height: 45px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 10px;
+    background-color: #ff8663;
+    box-sizing: border-box;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    color: #ffffff;
+    font-size: 13px;
+}
+.review__field-wrap {
+    display: flex;
+    flex-direction: column;
+}
+.button {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.popup__close {
+    position: relative;
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+}
+.popup__close:before,
+.popup__close:after {
+    position: absolute;
+    left: 10px;
+    content: " ";
+    height: 15px;
+    width: 4px;
+    background-color: #ffffff;
+}
+.popup__close:before {
+    transform: rotate(45deg);
+}
+.popup__close:after {
+    transform: rotate(-45deg);
+}
+
+.popup__comments {
+    widows: 100%;
+    height: 200px;
+    padding: 10px 10px;
+    overflow-y: auto;
+    p {
+        margin: 0px;
+    }
+}
+.review {
+    padding: 10px;
+}
+.review__title {
+    color: #ff8663;
+}
+.review__field-wrap {
+    input,
+    textarea {
+        margin: 10px 0;
+        border-radius: 15px;
+        padding: 3px 5px;
+        border-color: rgb(166, 168, 167);
+    }
+    textarea {
+        min-height: 50px;
+    }
+}
+.button-popup {
+    float: right;
+    width: 85px;
+    padding: 6px 10px;
+    height: 100%;
+    border: none;
+    border-radius: 10px;
+    background: #ff8663;
+    color: white;
+    cursor: pointer;
+    &:hover {
+        box-shadow: 0 0 10px #ff8663;
+    }
+    &:focus {
+        outline: none;
+    }
+    &:active {
+        box-shadow: 0 0 20px #ff8663;
+    }
+}
+.coment {
+    margin-bottom: 15px;
+}
+.coment__heder {
+    display: flex;
+    font-size: 14px;
+}
+.coment__uesr-name {
+    font-weight: bold;
+}
+.coment__place {
+    margin-left: 10px;
+    color: #b4b4b4;
+}
+.coment__date {
+    margin-left: 10px;
+    color: #b4b4b4;
+    font-size: 14px;
+}
+.cometn__text {
+    font-size: 14px;
+    color: #8a8a8a;
+}
