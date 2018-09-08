@@ -1,11 +1,12 @@
 import "./styles/styles.scss";
-import reviewTemplate from "../map-hbs.hbs";
-import comentTemplate from "../coment.hbs";
+import reviewTemplate from "./hbs-template/popup.hbs";
+import comentTemplate from "./hbs-template/coment.hbs";
+
 const container = document.querySelector(".container");
+let markers = [];
+let currentReview = {};
 
 ymaps.ready(init);
-
-let markers = [];
 
 function init() {
     let myMap = new ymaps.Map("map", {
@@ -15,28 +16,39 @@ function init() {
         controls: ["zoomControl", "fullscreenControl"]
     });
 
-    let clusterer = new ymaps.Clusterer({ clusterDisableClickZoom: true });
+    let customItemContentLayout = ymaps.templateLayoutFactory.createClass(
+        `   <div class="ballon">
+            <div class="ballon__info">
+                <div class="ballon__place">{{ properties.place }}</div>
+                <div  class="ballon__address">{{ properties.address }}</div>
+                <div class="ballon__text">{{ properties.text }}</div>
+            </div>
+            <div class="ballon__date">{{ properties.date }}</div>
+        </div>`
+    );
+    let clusterer = new ymaps.Clusterer({
+        clusterDisableClickZoom: true,
+        clusterOpenBalloonOnClick: true,
+        clusterBalloonContentLayout: "cluster#balloonCarousel",
+        clusterBalloonItemContentLayout: customItemContentLayout,
+        clusterBalloonPanelMaxMapArea: 0,
+        clusterBalloonContentLayoutWidth: 250,
+        clusterBalloonContentLayoutHeight: 130,
+        clusterBalloonPagerSize: 5
+    });
+
     myMap.geoObjects.add(clusterer);
 
+    clusterer.events.add("balloonopen", closePopup);
+
     myMap.events.add("click", async e => {
-        const coords = e.get("coords");
-        const position = e.get("position");
+        currentReview.coords = e.get("coords");
+        currentReview.position = e.get("position");
 
-        const response = await ymaps.geocode(coords);
-        const address = response.geoObjects.get(0).getAddressLine();
+        const response = await ymaps.geocode(currentReview.coords);
 
-        removePlacemark();
-
-        const placemark = new ymaps.Placemark(coords);
-        let id = Date.now();
-        placemark.properties.set("id", id);
-        placemark.properties.set("type", "placemark");
-        placemark.properties.set("address", address);
-        placemark.properties.set("position", position);
-        myMap.geoObjects.add(placemark);
-        clusterer.add(placemark);
-        markers.push(placemark);
-        openPopupReview(position, address, id);
+        currentReview.address = response.geoObjects.get(0).getAddressLine();
+        openPopupReview(currentReview.position, currentReview.address);
     });
 
     myMap.geoObjects.events.add("click", e => {
@@ -45,27 +57,32 @@ function init() {
 
         if (properties.get("type") !== "placemark") return;
 
-        openPopupReview(
-            properties.get("position"),
-            properties.get("address"),
-            properties.get("id")
-        );
-        showComments(properties.get("id"));
-        removePlacemark();
+        openPopupReview(properties.get("position"), properties.get("address"));
+        showComments(properties.get("address"));
     });
 
-    function openPopupReview(position, address, id) {
+    map.addEventListener("click", e => {
+        let target = e.target;
+
+        if (target.className !== "ballon__address") return;
+        const coords = [e.clientX, e.clientY];
+        openPopupReview(coords, target.textContent);
+    });
+
+    function openPopupReview(position, address) {
         const popup = reviewTemplate({ address });
         const container = document.querySelector(".container");
 
-        container.setAttribute("data-id", id);
+        myMap.balloon.close();
+
+        position = checkPosition(position);
         container.style.left = `${position[0]}px`;
         container.style.top = `${position[1]}px`;
         container.innerHTML = popup;
 
         const button = document.querySelector(".button-popup");
         const close = document.querySelector(".popup__close");
-
+        showComments(address);
         button.addEventListener("click", saveReview);
         close.addEventListener("click", closePopup);
     }
@@ -75,42 +92,25 @@ function init() {
             username: document.querySelector(".input-username").value,
             place: document.querySelector(".input-place").value,
             text: document.querySelector(".text-coment").value,
-            date: new Date().toLocaleString()
+            date: new Date().toLocaleString(),
+            address: currentReview.address
         };
 
-        let marker;
+        if (!review.username || !review.place || !review.text) return;
 
-        if (!review.username || !review.place || !review.text) {
-            return;
-        }
+        const placemark = new ymaps.Placemark(currentReview.coords, review);
 
-        markers.forEach(item => {
-            if (
-                item.properties.get("id") == container.getAttribute("data-id")
-            ) {
-                marker = item;
-            }
-        });
+        placemark.properties.set("id", Date.now());
+        placemark.properties.set("type", "placemark");
+        placemark.properties.set("address", currentReview.address);
+        placemark.properties.set("position", currentReview.position);
+        placemark.properties.set("reviews", review);
+        myMap.geoObjects.add(placemark);
+        clusterer.add(placemark);
+        markers.push(placemark);
 
-        let oldReviews = marker.properties.get("reviews") || [];
-
-        oldReviews.push(review);
-        marker.properties.set("reviews", oldReviews);
-        showComments(marker.properties.get("id"));
+        showComments(currentReview.address);
         clearInput();
-    }
-    function closePopup() {
-        container.innerHTML = "";
-        removePlacemark();
-    }
-    function removePlacemark() {
-        markers.forEach(item => {
-            if (item.properties.get("reviews") === undefined) {
-                myMap.geoObjects.remove(item);
-
-                clusterer.remove(item);
-            }
-        });
     }
 }
 
@@ -120,15 +120,35 @@ function clearInput() {
     document.querySelector(".text-coment").value = "";
 }
 
-function showComments(id) {
-    let markerReviews;
+function showComments(address) {
+    let markerReviews = [];
 
     markers.forEach(item => {
-        if (id === item.properties.get("id")) {
-            markerReviews = item.properties.get("reviews");
+        if (address === item.properties.get("address")) {
+            markerReviews.push(item.properties.get("reviews"));
         }
     });
+    if (markerReviews.length === 0) return;
     const coments = comentTemplate({ items: markerReviews });
     const popupComments = document.querySelector(".popup__comments");
+
     popupComments.innerHTML = coments;
+}
+
+function closePopup() {
+    container.innerHTML = "";
+}
+
+function checkPosition(position) {
+    let h = 490;
+    let w = 350;
+
+    if (w + position[0] > document.body.clientWidth) {
+        position[0] = position[0] - w;
+    }
+    if (h + position[1] > document.body.clientHeight) {
+        position[1] = document.body.clientHeight - h;
+    }
+
+    return position;
 }
