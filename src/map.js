@@ -140,8 +140,8 @@ function closePopup() {
 }
 
 function checkPosition(position) {
-    let h = 490;
-    let w = 350;
+    let h = 580;
+    let w = 385;
 
     if (w + position[0] > document.body.clientWidth) {
         position[0] = position[0] - w;
